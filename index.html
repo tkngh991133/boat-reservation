@@ -1,72 +1,31 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>ボート予約システム</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #f0f8ff;
-      margin: 40px;
-      color: #333;
-    }
-    h1 {
-      color: #0066cc;
-      text-align: center;
-    }
-    form {
-      max-width: 400px;
-      margin: 20px auto;
-      padding: 20px;
-      background: white;
-      border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-    label {
-      display: block;
-      margin-top: 15px;
-      font-weight: bold;
-    }
-    input, select {
-      width: 100%;
-      padding: 8px;
-      margin-top: 5px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-    }
-    button {
-      margin-top: 20px;
-      width: 100%;
-      padding: 10px;
-      font-size: 16px;
-      background-color: #28a745;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #218838;
-    }
-    #result {
-      max-width: 400px;
-      margin: 20px auto;
-      padding: 15px;
-      background: #e9ffe9;
-      border: 1px solid #28a745;
-      border-radius: 10px;
-      display: none;
-    }
+    body { font-family: Arial, sans-serif; background-color: #f0f8ff; margin: 40px; color: #333; }
+    h1 { color: #0066cc; text-align: center; }
+    form { max-width: 400px; margin: 20px auto; padding: 20px; background: #fff;
+           border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    label { display: block; margin-top: 15px; font-weight: bold; }
+    input, select { width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px; }
+    button { margin-top: 20px; width: 100%; padding: 10px; font-size: 16px; background: #28a745; color: #fff;
+             border: none; border-radius: 5px; cursor: pointer; }
+    button:hover { background: #218838; }
+    #result { max-width: 400px; margin: 20px auto; padding: 15px; background: #e9ffe9; border: 1px solid #28a745;
+              border-radius: 10px; display: none; }
   </style>
 </head>
 <body>
   <h1>ボート予約システム</h1>
+
   <form id="reservationForm">
     <label for="name">お名前</label>
-    <input type="text" id="name" name="name" required>
+    <input type="text" id="name" name="name" required />
 
-<label for="date">予約日</label>
-<input type="date" id="date" name="date" required min="">
+    <label for="date">予約日</label>
+    <input type="date" id="date" name="date" required min="" />
 
     <label for="boat">船の選択</label>
     <select id="boat" name="boat" required>
@@ -80,58 +39,61 @@
 
   <div id="result"></div>
 
-<script>
-  // ページ読み込み時に今日の日付を min にセット
-  (function setMinDate() {
-    const d = new Date();
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth()+1).padStart(2,"0");
-    const dd = String(d.getDate()).padStart(2,"0");
-    document.getElementById("date").setAttribute("min", `${yyyy}-${mm}-${dd}`);
-  })();
-  
-  const ENDPOINT = 'https://script.google.com/macros/s/AKfycbwiOri6E1VGi_ala541uD9HzD_F3Rd_MOAf_lFXVYTG1AzP0GDB3mU-QtzIVQGFbxdN/exec'; // ← あなたの/exec URL
+  <script>
+    // 予約日が「今日以降」しか選べないようにする
+    (function setMinDate() {
+      const d = new Date();
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      document.getElementById("date").setAttribute("min", `${yyyy}-${mm}-${dd}`);
+    })();
 
-  const form = document.getElementById("reservationForm");
-  const button = form.querySelector("button[type=submit]");
-  const resultDiv = document.getElementById("result");
+    const ENDPOINT = 'https://script.google.com/macros/s/AKfycbwvp30z_8N5ZCdtJZPAxq-YkRTqSvwVnTb0b5FXjmwgBM2grCt6kaUYyhEonovhob-6/exec'; // ← あなたの /exec
 
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const name = document.getElementById("name").value;
-    const date = document.getElementById("date").value;
-    const boat = document.getElementById("boat").value;
-    if (!name) { alert("お名前を入力してください！"); return; }
+    const form = document.getElementById("reservationForm");
+    const button = form.querySelector("button[type=submit]");
+    const resultDiv = document.getElementById("result");
 
-    // 🔹 送信中の表示＆二重送信防止
-    button.disabled = true;
-    const oldLabel = button.textContent;
-    button.textContent = "送信中…";
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const name = document.getElementById("name").value;
+      const date = document.getElementById("date").value;
+      const boat = document.getElementById("boat").value;
+      if (!name) { alert("お名前を入力してください！"); return; }
 
-    try {
-      const body = new URLSearchParams({ name, date, boat }).toString();
-      const res = await fetch(ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body
-      });
-      const json = await res.json();
-      if (!json.ok) throw new Error(json.error || "保存に失敗しました");
+      // 送信中の表示＆二重送信防止
+      button.disabled = true;
+      const oldLabel = button.textContent;
+      button.textContent = "送信中…";
 
-      resultDiv.style.display = "block";
-      resultDiv.innerHTML = `
-        <h3>予約内容（保存しました）</h3>
-        <p><strong>お名前:</strong> ${name}</p>
-        <p><strong>予約日:</strong> ${date}</p>
-        <p><strong>船:</strong> ${boat}</p>
-      `;
-      form.reset();
-    } catch (err) {
-      alert("送信エラー：" + err.message);
-    } finally {
-      button.disabled = false;
-      button.textContent = oldLabel;
-    }
-  });
-</script>
+      try {
+        const body = new URLSearchParams({ name, date, boat }).toString();
+        const res = await fetch(ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body
+        });
 
+        // ネットワークレベルで失敗すると res.ok に到達する前に例外になることがあるので try/catch 外にせずここで確認
+        const json = await res.json(); // { ok: true } 期待
+        if (!json.ok) throw new Error(json.error || "保存に失敗しました");
+
+        resultDiv.style.display = "block";
+        resultDiv.innerHTML = `
+          <h3>予約内容（保存しました）</h3>
+          <p><strong>お名前:</strong> ${name}</p>
+          <p><strong>予約日:</strong> ${date}</p>
+          <p><strong>船:</strong> ${boat}</p>
+        `;
+        form.reset();
+      } catch (err) {
+        alert("送信エラー：" + err.message);
+      } finally {
+        button.disabled = false;
+        button.textContent = oldLabel;
+      }
+    });
+  </script>
+</body>
+</html>
