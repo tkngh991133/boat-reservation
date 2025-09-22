@@ -80,29 +80,44 @@
 
   <div id="result"></div>
 
-  <script>
-    document.getElementById("reservationForm").addEventListener("submit", function(event) {
-      event.preventDefault();
+<script>
+  const ENDPOINT = 'WEB_APP_URL_HERE'; // ←ここを差し替え
 
-      const name = document.getElementById("name").value;
-      const date = document.getElementById("date").value;
-      const boat = document.getElementById("boat").value;
+  document.getElementById("reservationForm").addEventListener("submit", async function(event) {
+    event.preventDefault();
 
-      // 入力チェック
-      if (name === "") {
-        alert("お名前を入力してください！");
-        return;
-      }
+    const name = document.getElementById("name").value;
+    const date = document.getElementById("date").value;
+    const boat = document.getElementById("boat").value;
 
+    if (!name) { alert("お名前を入力してください！"); return; }
+
+    try {
+      // 送信（Sheetsへ保存）
+      const res = await fetch(ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, date, boat })
+      });
+      const json = await res.json();
+
+      if (!json.ok) throw new Error(json.error || '保存に失敗しました');
+
+      // 画面表示
       const resultDiv = document.getElementById("result");
       resultDiv.style.display = "block";
       resultDiv.innerHTML = `
-        <h3>予約内容</h3>
+        <h3>予約内容（保存しました）</h3>
         <p><strong>お名前:</strong> ${name}</p>
         <p><strong>予約日:</strong> ${date}</p>
         <p><strong>船:</strong> ${boat}</p>
       `;
-    });
-  </script>
-</body>
-</html>
+
+      // 入力を軽くリセット
+      document.getElementById("reservationForm").reset();
+
+    } catch (e) {
+      alert('送信エラー：' + e.message);
+    }
+  });
+</script>
