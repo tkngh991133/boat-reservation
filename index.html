@@ -1,102 +1,24 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <title>ボート予約システム</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #f0f8ff;
-      margin: 40px;
-      color: #333;
-    }
-    h1 {
-      color: #0066cc;
-      text-align: center;
-    }
-    form {
-      max-width: 400px;
-      margin: 20px auto;
-      padding: 20px;
-      background: white;
-      border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-    label {
-      display: block;
-      margin-top: 15px;
-      font-weight: bold;
-    }
-    input, select {
-      width: 100%;
-      padding: 8px;
-      margin-top: 5px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-    }
-    button {
-      margin-top: 20px;
-      width: 100%;
-      padding: 10px;
-      font-size: 16px;
-      background-color: #28a745;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #218838;
-    }
-    #result {
-      max-width: 400px;
-      margin: 20px auto;
-      padding: 15px;
-      background: #e9ffe9;
-      border: 1px solid #28a745;
-      border-radius: 10px;
-      display: none;
-    }
-  </style>
-</head>
-<body>
-  <h1>ボート予約システム</h1>
-  <form id="reservationForm">
-    <label for="name">お名前</label>
-    <input type="text" id="name" name="name" required>
+<script>
+  document.getElementById("reservationForm").addEventListener("submit", function(event) {
+    event.preventDefault();
 
-    <label for="date">予約日</label>
-    <input type="date" id="date" name="date" required>
+    const name = document.getElementById("name").value;
+    const date = document.getElementById("date").value;
+    const boat = document.getElementById("boat").value;
 
-    <label for="boat">船の選択</label>
-    <select id="boat" name="boat" required>
-      <option value="">選んでください</option>
-      <option value="1号船">1号船</option>
-      <option value="2号船">2号船</option>
-    </select>
+    // 入力チェック
+    if (name === "") {
+      alert("お名前を入力してください！");
+      return;
+    }
 
-    <button type="submit">予約する</button>
-  </form>
-
-  <div id="result"></div>
-
-  <script>
-    document.getElementById("reservationForm").addEventListener("submit", function(event) {
-      event.preventDefault(); // ページがリロードしないようにする
-
-      const name = document.getElementById("name").value;
-      const date = document.getElementById("date").value;
-      const boat = document.getElementById("boat").value;
-
-      const resultDiv = document.getElementById("result");
-      resultDiv.style.display = "block";
-      resultDiv.innerHTML = `
-        <h3>予約内容</h3>
-        <p><strong>お名前:</strong> ${name}</p>
-        <p><strong>予約日:</strong> ${date}</p>
-        <p><strong>船:</strong> ${boat}</p>
-      `;
-    });
-  </script>
-</body>
-</html>
+    const resultDiv = document.getElementById("result");
+    resultDiv.style.display = "block";
+    resultDiv.innerHTML = `
+      <h3>予約内容</h3>
+      <p><strong>お名前:</strong> ${name}</p>
+      <p><strong>予約日:</strong> ${date}</p>
+      <p><strong>船:</strong> ${boat}</p>
+    `;
+  });
+</script>
