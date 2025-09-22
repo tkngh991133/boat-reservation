@@ -64,6 +64,8 @@
       const name = document.getElementById("name").value;
       const date = document.getElementById("date").value;
       const boat = document.getElementById("boat").value;
+      const people = document.getElementById("people").value;
+
       if (!name) { alert("お名前を入力してください！"); return; }
 
       // 送信中の表示＆二重送信防止
@@ -72,7 +74,7 @@
       button.textContent = "送信中…";
 
       try {
-        const body = new URLSearchParams({ name, date, boat }).toString();
+        const body = new URLSearchParams({ name, date, boat, people }).toString();
         const res = await fetch(ENDPOINT, {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
