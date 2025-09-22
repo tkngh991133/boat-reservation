@@ -48,11 +48,20 @@
     button:hover {
       background-color: #218838;
     }
+    #result {
+      max-width: 400px;
+      margin: 20px auto;
+      padding: 15px;
+      background: #e9ffe9;
+      border: 1px solid #28a745;
+      border-radius: 10px;
+      display: none;
+    }
   </style>
 </head>
 <body>
   <h1>ボート予約システム</h1>
-  <form>
+  <form id="reservationForm">
     <label for="name">お名前</label>
     <input type="text" id="name" name="name" required>
 
@@ -68,5 +77,26 @@
 
     <button type="submit">予約する</button>
   </form>
+
+  <div id="result"></div>
+
+  <script>
+    document.getElementById("reservationForm").addEventListener("submit", function(event) {
+      event.preventDefault(); // ページがリロードしないようにする
+
+      const name = document.getElementById("name").value;
+      const date = document.getElementById("date").value;
+      const boat = document.getElementById("boat").value;
+
+      const resultDiv = document.getElementById("result");
+      resultDiv.style.display = "block";
+      resultDiv.innerHTML = `
+        <h3>予約内容</h3>
+        <p><strong>お名前:</strong> ${name}</p>
+        <p><strong>予約日:</strong> ${date}</p>
+        <p><strong>船:</strong> ${boat}</p>
+      `;
+    });
+  </script>
 </body>
 </html>
