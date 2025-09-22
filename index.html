@@ -81,9 +81,9 @@
   <div id="result"></div>
 
 <script>
-  const ENDPOINT = 'https://script.google.com/macros/s/AKfycbxBqmUiSB3STdaYr4Untv8VSXMj2DtFZfcw4Md-Em0blKiL5t1b1oOVJeeyqFzat1Jw/exec'; // ←ここを差し替え
+  const ENDPOINT = 'https://script.google.com/macros/s/AKfycbwiOri6E1VGi_ala541uD9HzD_F3Rd_MOAf_lFXVYTG1AzP0GDB3mU-QtzIVQGFbxdN/exec'; // /exec を必ず使用
 
-  document.getElementById("reservationForm").addEventListener("submit", async function(event) {
+  document.getElementById("reservationForm").addEventListener("submit", async (event) => {
     event.preventDefault();
 
     const name = document.getElementById("name").value;
@@ -93,17 +93,18 @@
     if (!name) { alert("お名前を入力してください！"); return; }
 
     try {
-      // 送信（Sheetsへ保存）
+      // JSONではなく、フォームURLエンコードで送る（プリフライト回避）
+      const formBody = new URLSearchParams({ name, date, boat }).toString();
+
       const res = await fetch(ENDPOINT, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, date, boat })
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: formBody,
       });
-      const json = await res.json();
 
+      const json = await res.json(); // { ok: true } が返る
       if (!json.ok) throw new Error(json.error || '保存に失敗しました');
 
-      // 画面表示
       const resultDiv = document.getElementById("result");
       resultDiv.style.display = "block";
       resultDiv.innerHTML = `
@@ -112,8 +113,6 @@
         <p><strong>予約日:</strong> ${date}</p>
         <p><strong>船:</strong> ${boat}</p>
       `;
-
-      // 入力を軽くリセット
       document.getElementById("reservationForm").reset();
 
     } catch (e) {
@@ -121,3 +120,4 @@
     }
   });
 </script>
+
