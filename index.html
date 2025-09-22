@@ -20,22 +20,26 @@
 <body>
   <h1>ボート予約システム</h1>
 
-  <form id="reservationForm">
-    <label for="name">お名前</label>
-    <input type="text" id="name" name="name" required />
+<form id="reservationForm">
+  <label for="name">お名前</label>
+  <input type="text" id="name" name="name" required>
 
-    <label for="date">予約日</label>
-    <input type="date" id="date" name="date" required min="" />
+  <label for="date">予約日</label>
+  <input type="date" id="date" name="date" required min="">
 
-    <label for="boat">船の選択</label>
-    <select id="boat" name="boat" required>
-      <option value="">選んでください</option>
-      <option value="1号船">1号船</option>
-      <option value="2号船">2号船</option>
-    </select>
+  <label for="boat">船の選択</label>
+  <select id="boat" name="boat" required>
+    <option value="">選んでください</option>
+    <option value="1号船">1号船</option>
+    <option value="2号船">2号船</option>
+  </select>
 
-    <button type="submit">予約する</button>
-  </form>
+  <!-- 🔹 人数を追加 -->
+  <label for="people">人数</label>
+  <input type="number" id="people" name="people" value="1" min="1" max="20" required>
+
+  <button type="submit">予約する</button>
+</form>
 
   <div id="result"></div>
 
