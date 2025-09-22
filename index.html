@@ -81,31 +81,34 @@
   <div id="result"></div>
 
 <script>
-  const ENDPOINT = 'https://script.google.com/macros/s/AKfycbwiOri6E1VGi_ala541uD9HzD_F3Rd_MOAf_lFXVYTG1AzP0GDB3mU-QtzIVQGFbxdN/exec'; // /exec を必ず使用
+  const ENDPOINT = 'https://script.google.com/macros/s/～～～/exec'; // ← あなたの/exec URL
 
-  document.getElementById("reservationForm").addEventListener("submit", async (event) => {
-    event.preventDefault();
+  const form = document.getElementById("reservationForm");
+  const button = form.querySelector("button[type=submit]");
+  const resultDiv = document.getElementById("result");
 
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
     const name = document.getElementById("name").value;
     const date = document.getElementById("date").value;
     const boat = document.getElementById("boat").value;
-
     if (!name) { alert("お名前を入力してください！"); return; }
 
+    // 🔹 送信中の表示＆二重送信防止
+    button.disabled = true;
+    const oldLabel = button.textContent;
+    button.textContent = "送信中…";
+
     try {
-      // JSONではなく、フォームURLエンコードで送る（プリフライト回避）
-      const formBody = new URLSearchParams({ name, date, boat }).toString();
-
+      const body = new URLSearchParams({ name, date, boat }).toString();
       const res = await fetch(ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: formBody,
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body
       });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || "保存に失敗しました");
 
-      const json = await res.json(); // { ok: true } が返る
-      if (!json.ok) throw new Error(json.error || '保存に失敗しました');
-
-      const resultDiv = document.getElementById("result");
       resultDiv.style.display = "block";
       resultDiv.innerHTML = `
         <h3>予約内容（保存しました）</h3>
@@ -113,10 +116,12 @@
         <p><strong>予約日:</strong> ${date}</p>
         <p><strong>船:</strong> ${boat}</p>
       `;
-      document.getElementById("reservationForm").reset();
-
-    } catch (e) {
-      alert('送信エラー：' + e.message);
+      form.reset();
+    } catch (err) {
+      alert("送信エラー：" + err.message);
+    } finally {
+      button.disabled = false;
+      button.textContent = oldLabel;
     }
   });
 </script>
