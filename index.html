@@ -81,6 +81,15 @@
   <div id="result"></div>
 
 <script>
+  // ページ読み込み時に今日の日付を min にセット
+  (function setMinDate() {
+    const d = new Date();
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth()+1).padStart(2,"0");
+    const dd = String(d.getDate()).padStart(2,"0");
+    document.getElementById("date").setAttribute("min", `${yyyy}-${mm}-${dd}`);
+  })();
+  
   const ENDPOINT = 'https://script.google.com/macros/s/～～～/exec'; // ← あなたの/exec URL
 
   const form = document.getElementById("reservationForm");
