@@ -20,26 +20,26 @@
 <body>
   <h1>ボート予約システム</h1>
 
-<form id="reservationForm">
-  <label for="name">お名前</label>
-  <input type="text" id="name" name="name" required>
+  <form id="reservationForm">
+    <label for="name">お名前</label>
+    <input type="text" id="name" name="name" required />
 
-  <label for="date">予約日</label>
-  <input type="date" id="date" name="date" required min="">
+    <label for="date">予約日</label>
+    <input type="date" id="date" name="date" required min="" />
 
-  <label for="boat">船の選択</label>
-  <select id="boat" name="boat" required>
-    <option value="">選んでください</option>
-    <option value="1号船">1号船</option>
-    <option value="2号船">2号船</option>
-  </select>
+    <label for="boat">船の選択</label>
+    <select id="boat" name="boat" required>
+      <option value="">選んでください</option>
+      <option value="1号船">1号船</option>
+      <option value="2号船">2号船</option>
+    </select>
 
-  <!-- 🔹 人数を追加 -->
-  <label for="people">人数</label>
-  <input type="number" id="people" name="people" value="1" min="1" max="20" required>
+    <!-- 人数 -->
+    <label for="people">人数</label>
+    <input type="number" id="people" name="people" value="1" min="1" max="20" required />
 
-  <button type="submit">予約する</button>
-</form>
+    <button type="submit">予約する</button>
+  </form>
 
   <div id="result"></div>
 
@@ -53,7 +53,8 @@
       document.getElementById("date").setAttribute("min", `${yyyy}-${mm}-${dd}`);
     })();
 
-    const ENDPOINT = 'https://script.google.com/macros/s/AKfycbznK39NTobaNvsLOkmXIHZ7sbFzRfUL3YT9NrFlrX11_-SHmxBtB1n75dSKfXRjmDU/exec'; // ← あなたの /exec
+    // ← あなたの /exec に置き換え済み
+    const ENDPOINT = 'https://script.google.com/macros/s/AKfycbyaYi90p4UUK8tze4R0HhYSROJVwafhS1B2kg9gaSY1cowTgHizbKwBJJtzHjGwJ17r/exec';
 
     const form = document.getElementById("reservationForm");
     const button = form.querySelector("button[type=submit]");
@@ -61,12 +62,14 @@
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const name = document.getElementById("name").value;
-      const date = document.getElementById("date").value;
-      const boat = document.getElementById("boat").value;
-      const people = document.getElementById("people").value;
+
+      const name   = document.getElementById("name").value.trim();
+      const date   = document.getElementById("date").value;       // "YYYY-MM-DD"
+      const boat   = document.getElementById("boat").value;
+      const people = Math.max(1, parseInt(document.getElementById("people").value || "1", 10));
 
       if (!name) { alert("お名前を入力してください！"); return; }
+      if (!boat) { alert("船を選択してください！"); return; }
 
       // 送信中の表示＆二重送信防止
       button.disabled = true;
@@ -75,22 +78,29 @@
 
       try {
         const body = new URLSearchParams({ name, date, boat, people }).toString();
-        const res = await fetch(ENDPOINT, {
+        const res  = await fetch(ENDPOINT, {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
           body
         });
+        const json = await res.json(); // { ok: true } を期待
 
-        // ネットワークレベルで失敗すると res.ok に到達する前に例外になることがあるので try/catch 外にせずここで確認
-        const json = await res.json(); // { ok: true } 期待
+        // ▼ 満席エラーの詳細表示（GASの確実版に対応）
+        if (!json.ok && json.error === 'full') {
+          alert(`満席です。\n上限: ${json.limit} 名\n現在: ${json.sum ?? '(不明)'} 名\n申込: ${json.request ?? people} 名\n残り: ${json.remaining} 名\nversion: ${json.version ?? '-'}`);
+          return;
+        }
         if (!json.ok) throw new Error(json.error || "保存に失敗しました");
 
+        // 成功表示
         resultDiv.style.display = "block";
         resultDiv.innerHTML = `
           <h3>予約内容（保存しました）</h3>
           <p><strong>お名前:</strong> ${name}</p>
           <p><strong>予約日:</strong> ${date}</p>
           <p><strong>船:</strong> ${boat}</p>
+          <p><strong>人数:</strong> ${people}名</p>
+          ${typeof json.remaining === 'number' ? `<p>残り枠：${json.remaining}名</p>` : ''}
         `;
         form.reset();
       } catch (err) {
