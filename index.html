@@ -1,164 +1,133 @@
-const SPREADSHEET_ID = '<<1mKekvx2BRbHL8NGY1zkzCKOgm98sauUBjLJTvFJPlck>>';
-const SHEET_NAME     = 'シート1';
-const LOG_SHEET      = 'server_log';
-const API_VERSION    = 'v5-lock+normalize+id-rollback';
-const CAPACITY       = { '1号船': 20, '2号船': 20 };
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>ボート予約システム</title>
+  <style>
+    body { font-family: Arial, sans-serif; background-color: #f0f8ff; margin: 40px; color: #333; }
+    h1 { color: #0066cc; text-align: center; }
+    form { max-width: 400px; margin: 20px auto; padding: 20px; background: #fff;
+           border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    label { display: block; margin-top: 15px; font-weight: bold; }
+    input, select { width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px; }
+    button { margin-top: 20px; width: 100%; padding: 10px; font-size: 16px; background: #28a745; color: #fff;
+             border: none; border-radius: 5px; cursor: pointer; }
+    button:hover { background: #218838; }
+    #result { max-width: 400px; margin: 20px auto; padding: 15px; background: #e9ffe9; border: 1px solid #28a745;
+             border-radius: 10px; display: none; }
+    #result.success { background-color: #e9ffe9; border-color: #28a745; }
+    #result.error { background-color: #ffe9e9; border-color: #dc3545; }
+  </style>
+</head>
+<body>
+  <h1>ボート予約システム</h1>
 
-// -------- Utilities --------
-function fmtDateYYYYMMDD(x) {
-  if (x instanceof Date) return Utilities.formatDate(x, Session.getScriptTimeZone() || 'Asia/Tokyo', 'yyyy-MM-dd');
-  // 文字列なら先頭10桁を使う（yyyy-mm-dd前提）
-  return String(x).slice(0, 10);
-}
-function toHalfWidthDigits(s) {
-  return String(s).replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0));
-}
-function normalizeBoat(raw) {
-  const s = toHalfWidthDigits(String(raw)).trim(); // 全角数字→半角、前後空白除去
-  // 代表的な表記ゆれ吸収（例：「1 号船」「１号」など）
-  const m = s.match(/^(\d+)\s*号?\s*船?$/);
-  if (m) return `${m[1]}号船`;
-  return s; // それ以外はそのまま
-}
-function toIntStrict(v) {
-  // “3名”, “３”, " 5 " などを数字化。小数/NaNは拒否
-  const n = Number(toHalfWidthDigits(String(v)).replace(/[^\d\-]/g, ''));
-  if (!Number.isFinite(n) || !Number.isInteger(n)) throw new Error('people must be integer');
-  return n;
-}
-function getSheets_() {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const data = ss.getSheetByName(SHEET_NAME) || ss.insertSheet(SHEET_NAME);
-  const log  = ss.getSheetByName(LOG_SHEET)  || ss.insertSheet(LOG_SHEET);
-  return { ss, data, log };
-}
-function logLine_(logSheet, type, obj) {
-  const ts = new Date();
-  logSheet.appendRow([ts, type, JSON.stringify(obj || {})]);
-}
+  <form id="reservationForm">
+    <label for="name">お名前</label>
+    <input type="text" id="name" name="name" required />
 
-function sumPeopleFor_(dataSheet, dateStr, boatStr) {
-  // シート1の全データを読み、対象日＆対象船の people を厳格加算
-  const last = dataSheet.getLastRow();
-  if (last < 1) return 0;
-  const values = dataSheet.getRange(1, 1, last, 5).getValues(); // A:timestamp B:name C:date D:boat E:people
-  let sum = 0;
-  for (let i = 0; i < values.length; i++) {
-    const [ts, name, cDate, dBoat, ePeople] = values[i];
-    if (!cDate || !dBoat || !ePeople) continue;
-    const rowDate = fmtDateYYYYMMDD(cDate);
-    const rowBoat = normalizeBoat(dBoat);
-    if (rowDate === dateStr && rowBoat === boatStr) {
-      const n = Number(toHalfWidthDigits(String(ePeople)).replace(/[^\d\-]/g, ''));
-      if (Number.isFinite(n)) sum += n;
-    }
-  }
-  return sum;
-}
+    <label for="date">予約日</label>
+    <input type="date" id="date" name="date" required min="" />
 
-function newReservationId_() {
-  const props = PropertiesService.getScriptProperties();
-  const key = 'RES_SEQ';
-  const next = (Number(props.getProperty(key)) || 10000) + 1;
-  props.setProperty(key, String(next));
-  return `rsv_${next}`;
-}
+    <label for="boat">船の選択</label>
+    <select id="boat" name="boat" required>
+      <option value="">選んでください</option>
+      <option value="1号船">1号船</option>
+      <option value="2号船">2号船</option>
+    </select>
 
-function findRowById_(dataSheet, rsvId) {
-  // IDはB列(name)には入れない。IDは一意性を担保するため、今回は列Aのタイムスタンプとセットで列Fに入れる
-  const last = dataSheet.getLastRow();
-  if (last < 1) return -1;
-  const idCol = 6; // F列に予約IDを格納
-  const ids = dataSheet.getRange(1, idCol, last, 1).getValues().map(r => r[0]);
-  for (let i = ids.length - 1; i >= 0; i--) {
-    if (ids[i] === rsvId) return i + 1; // 行番号（1始まり）
-  }
-  return -1;
-}
+    <label for="people">人数</label>
+    <input type="number" id="people" name="people" value="1" min="1" max="20" required />
 
-// -------- Main --------
-function doGet() {
-  return ContentService.createTextOutput(JSON.stringify({ ok: true, msg: 'ready', version: API_VERSION }))
-    .setMimeType(ContentService.MimeType.JSON);
-}
+    <button type="submit">予約する</button>
+  </form>
 
-function doPost(e) {
-  const startedAt = new Date();
-  const { data, log } = getSheets_();
-  let body, name, dateStr, boat, people, cap, sumBefore, sumAfter, remaining, rsvId, rowAdded = false;
+  <div id="result"></div>
 
-  try {
-    body = e && e.postData && e.postData.contents ? JSON.parse(e.postData.contents) : {};
-    name   = (body.name || '').trim();
-    dateStr= fmtDateYYYYMMDD(body.date || body.c || body.C || body.d); // 入力の曖昧さを吸収
-    boat   = normalizeBoat(body.boat || body.dBoat || body.D || body.boatName);
-    people = toIntStrict(body.people || body.p || body.P);
+  <script>
+    // 予約日が「今日以降」しか選べないようにする
+    (function setMinDate() {
+      const d = new Date();
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      document.getElementById("date").setAttribute("min", `${yyyy}-${mm}-${dd}`);
+    })();
 
-    if (!name)  throw new Error('name required');
-    if (!dateStr || !/\d{4}-\d{2}-\d{2}/.test(dateStr)) throw new Error('date(yyyy-mm-dd) required');
-    if (!boat)  throw new Error('boat required');
-    cap = CAPACITY[boat];
-    if (!Number.isFinite(cap)) {
-      // 容量テーブル未ヒット（表記ゆれの可能性）
-      throw new Error(`unknown boat "${boat}" (capacity not defined)`);
-    }
-    if (people <= 0) throw new Error('people must be >= 1');
+    // ★ このURLをあなたの新しいデプロイURLに書き換えてください
+    const ENDPOINT = 'https://script.google.com/macros/s/AKfycbyaYi90p4UUK8tze4R0HhYSROJVwafhS1B2kg9gaSY1cowTgHizbKwBJJtzHjGwJ17r/exec';
 
-    // ---- クリティカルセクション：ロック ----
-    const lock = LockService.getDocumentLock();
-    lock.waitLock(30 * 1000); // 30秒待機してロック獲得（同時POST抑止）
+    const form = document.getElementById("reservationForm");
+    const button = form.querySelector("button[type=submit]");
+    const resultDiv = document.getElementById("result");
 
-    try {
-      sumBefore = sumPeopleFor_(data, dateStr, boat);
-      remaining = cap - sumBefore;
-      if (people > remaining) {
-        logLine_(log, 'reject-pre', { date: dateStr, boat, cap, sumBefore, people, remaining, name });
-        return json({ ok: false, reason: 'capacity_exceeded', cap, sumBefore, people, remaining, version: API_VERSION });
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const name = document.getElementById("name").value.trim();
+      const date = document.getElementById("date").value;
+      const boat = document.getElementById("boat").value;
+      const people = Math.max(1, parseInt(document.getElementById("people").value || "1", 10));
+
+      if (!name) {
+        alert("お名前を入力してください！");
+        return;
+      }
+      if (!boat) {
+        alert("船を選択してください！");
+        return;
       }
 
-      // 予約IDを先に採番し、F列に格納（後で確実にロールバックできる）
-      rsvId = newReservationId_();
+      button.disabled = true;
+      const oldLabel = button.textContent;
+      button.textContent = "送信中…";
 
-      // 追加
-      const timestamp = new Date();
-      // A:timestamp B:name C:date D:boat E:people F:rsvId
-      data.appendRow([timestamp, name, dateStr, boat, people, rsvId]);
-      rowAdded = true;
+      // 既存の表示をリセット
+      resultDiv.style.display = "none";
+      resultDiv.innerHTML = "";
+      resultDiv.classList.remove("success", "error");
 
-      // 直後に厳格再集計（他プロセスの割り込みを防ぐためまだロック中）
-      sumAfter = sumPeopleFor_(data, dateStr, boat);
-      remaining = cap - sumAfter;
+      try {
+        const body = new URLSearchParams({ name, date, boat, people }).toString();
+        const res = await fetch(ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body
+        });
+        const json = await res.json();
 
-      if (sumAfter > cap) {
-        // ロールバック（IDで行を特定して削除）
-        const row = findRowById_(data, rsvId);
-        if (row > 0) data.deleteRow(row);
-        logLine_(log, 'reject-rollback', { date: dateStr, boat, cap, sumAfter, people, name, rsvId });
-        return json({ ok: false, reason: 'rolled_back', cap, sumAfter, remaining: cap - (sumAfter - people), version: API_VERSION });
+        if (json.ok) {
+          // 予約成功の場合
+          resultDiv.style.display = "block";
+          resultDiv.classList.add("success");
+          resultDiv.innerHTML = `
+            <h3>予約内容（保存しました）</h3>
+            <p><strong>お名前:</strong> ${name}</p>
+            <p><strong>予約日:</strong> ${date}</p>
+            <p><strong>船:</strong> ${boat}</p>
+            <p><strong>人数:</strong> ${people}名</p>
+            ${typeof json.remaining === 'number' ? `<p>残り枠：${json.remaining}名</p>` : ''}
+          `;
+          form.reset();
+        } else {
+          // 予約失敗の場合
+          resultDiv.style.display = "block";
+          resultDiv.classList.add("error");
+          if (json.error === 'full') {
+            resultDiv.innerHTML = `<h3>予約失敗</h3><p>満席です。</p><p><strong>上限:</strong> ${json.limit ?? '(不明)'} 名</p><p><strong>現在:</strong> ${json.sum ?? '(不明)'} 名</p><p><strong>申込:</strong> ${json.request ?? people} 名</p><p><strong>残り:</strong> ${json.remaining ?? '(不明)'} 名</p>`;
+          } else {
+            resultDiv.innerHTML = `<h3>予約失敗</h3><p>保存に失敗しました。</p><p>エラー: ${json.error || '不明なエラー'}</p>`;
+          }
+        }
+      } catch (err) {
+        resultDiv.style.display = "block";
+        resultDiv.classList.add("error");
+        resultDiv.innerHTML = `<h3>送信エラー</h3><p>${err.message}</p>`;
+      } finally {
+        button.disabled = false;
+        button.textContent = oldLabel;
       }
-
-      logLine_(log, 'accept', { date: dateStr, boat, cap, sumAfter, people, remaining, name, rsvId });
-      return json({ ok: true, cap, sumAfter, remaining, rsvId, version: API_VERSION });
-
-    } finally {
-      try { lock.releaseLock(); } catch (_) {}
-    }
-
-  } catch (err) {
-    // 例外時：追加済みならロールバックを最後の手段で試みる
-    try {
-      const { data, log } = getSheets_();
-      if (rsvId) {
-        const row = findRowById_(data, rsvId);
-        if (row > 0) data.deleteRow(row);
-      }
-      logLine_(log, 'error', { err: String(err), name, dateStr, boat, people, rsvId });
-    } catch (_) {}
-    return json({ ok: false, reason: 'error', message: String(err), version: API_VERSION });
-  }
-}
-
-function json(obj) {
-  return ContentService.createTextOutput(JSON.stringify(obj))
-    .setMimeType(ContentService.MimeType.JSON);
-}
+    });
+  </script>
+</body>
+</html>
