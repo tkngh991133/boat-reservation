@@ -1,229 +1,271 @@
 <!DOCTYPE html>
-
 <html lang="ja">
-
 <head>
+  <meta charset="UTF-8" />
+  <title>船座席予約</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", Meiryo, sans-serif; background:#f7f7f9; color:#222; margin:24px; }
+    h1 { text-align:center; color:#0a57cc; margin-bottom:8px; }
+    .wrap { max-width:980px; margin:0 auto; display:grid; grid-template-columns: 360px 1fr; gap:24px; align-items:start; }
+    form { background:#fff; padding:16px; border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,.06); }
+    label { font-weight:600; display:block; margin-top:10px; }
+    input[type="text"],input[type="date"],select { width:100%; padding:10px; border:1px solid #d8dbe1; border-radius:8px; margin-top:6px; }
+    .note { font-size:12px; color:#666; margin-top:4px; }
+    .seat-legend { display:flex; gap:12px; font-size:14px; margin-top:10px; align-items:center;}
+    .badge { display:inline-block; padding:4px 10px; border-radius:999px; border:1px solid #d0d7e2; background:#fff; }
+    .badge.ok { background:#0ea5ff; color:#fff; border-color:#0ea5ff; }
+    .badge.ng { background:#fff; color:#e11d48; border:1px solid #e11d48; }
+    .boat-area { background:#fff; padding:16px; border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,.06); }
+    .boat { position:relative; width:100%; max-width:520px; margin:0 auto; padding:40px 0; }
+    /* 船シルエット */
+    .hull {
+      width:100%; height:560px; margin:0 auto; background:
+        radial-gradient(100% 60% at 50% 0%, #d7d8db 0 60%, transparent 61%),
+        linear-gradient(#d7d8db,#d7d8db) center/60% 82% no-repeat;
+      border-radius:260px 260px 16px 16px / 320px 320px 16px 16px;
+      opacity:.9;
+    }
+    /* 座席レーン */
+    .lanes { position:absolute; inset:0; display:grid; grid-template-columns: 1fr 1fr; }
+    .lane { position:relative; }
+    .seat-row { position:absolute; left:0; right:0; display:flex; justify-content:space-between; align-items:center; }
+    /* 行の縦位置（ざっくり画像の間隔に合わせる） */
+    .r1{ top:60px } .r2{ top:140px } .r3{ top:220px } .r4{ top:300px } .r5{ top:380px } .r6{ top:460px }
 
-  <meta charset="UTF-8" />
+    /* 座席丸番号 */
+    .bubble { width:56px; height:56px; border-radius:50%; background:#000; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:20px; box-shadow:0 2px 6px rgba(0,0,0,.2); }
+    /* ラベル（空き/予約済） */
+    .label { min-width:110px; padding:10px 14px; border-radius:10px; text-align:center; font-weight:700; }
+    .available { background:#0ea5ff; color:#fff; border:1px solid #0ea5ff; cursor:pointer; }
+    .taken { background:#fff; color:#e11d48; border:2px solid #e11d48; cursor:not-allowed; }
+    .selected { outline:3px solid #0b8edc; box-shadow:0 0 0 4px rgba(14,165,255,.2) inset; }
 
-  <title>ボート予約システム</title>
+    .actions { display:flex; gap:12px; margin-top:16px; }
+    button { flex:1; padding:12px; border:none; border-radius:10px; font-size:16px; font-weight:700; cursor:pointer; }
+    .primary { background:#16a34a; color:#fff; }
+    .secondary { background:#e2e8f0; }
+    .result { margin-top:12px; padding:12px; background:#ecfdf5; border:1px solid #10b981; border-radius:10px; display:none; }
+    .muted { color:#666; font-size:13px; }
 
-  <style>
-
-    body { font-family: Arial, sans-serif; background-color: #f0f8ff; margin: 40px; color: #333; }
-
-    h1 { color: #0066cc; text-align: center; }
-
-    form { max-width: 400px; margin: 20px auto; padding: 20px; background: #fff;
-
-           border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-
-    label { display: block; margin-top: 15px; font-weight: bold; }
-
-    input, select { width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px; }
-
-    button { margin-top: 20px; width: 100%; padding: 10px; font-size: 16px; background: #28a745; color: #fff;
-
-             border: none; border-radius: 5px; cursor: pointer; }
-
-    button:hover { background: #218838; }
-
-    #result { max-width: 400px; margin: 20px auto; padding: 15px; background: #e9ffe9; border: 1px solid #28a745;
-
-              border-radius: 10px; display: none; }
-
-  </style>
-
+    @media (max-width:880px){ .wrap{ grid-template-columns:1fr; } }
+  </style>
 </head>
-
 <body>
-
-  <h1>ボート予約システム</h1>
-
-
-
-  <form id="reservationForm">
-
-    <label for="name">お名前</label>
-
-    <input type="text" id="name" name="name" required />
-
-
-
-    <label for="date">予約日</label>
-
-    <input type="date" id="date" name="date" required min="" />
-
-
-
-    <label for="boat">船の選択</label>
-
-    <select id="boat" name="boat" required>
-
-      <option value="">選んでください</option>
-
-      <option value="1号船">1号船</option>
-
-      <option value="2号船">2号船</option>
-
-    </select>
-
-
-
-    <!-- 人数 -->
-
-    <label for="people">人数</label>
-
-    <input type="number" id="people" name="people" value="1" min="1" max="20" required />
-
-
-
-    <button type="submit">予約する</button>
-
-  </form>
-
-
-
-  <div id="result"></div>
-
-
-
-  <script>
-
-    // 予約日が「今日以降」しか選べないようにする
-
-    (function setMinDate() {
-
-      const d = new Date();
-
-      const yyyy = d.getFullYear();
-
-      const mm = String(d.getMonth() + 1).padStart(2, "0");
-
-      const dd = String(d.getDate()).padStart(2, "0");
-
-      document.getElementById("date").setAttribute("min", `${yyyy}-${mm}-${dd}`);
-
-    })();
-
-
-
-    // ← あなたの /exec に置き換え済み
-
-    const ENDPOINT = 'https://script.google.com/macros/s/AKfycbws2LqHy9ENGMbfu6u56B7dlRlPR-prHsSBjIPf12RzBOoKtt93qCijygUJNfrHv2X6/exec';
-
-
-
-    const form = document.getElementById("reservationForm");
-
-    const button = form.querySelector("button[type=submit]");
-
-    const resultDiv = document.getElementById("result");
-
-
-
-    form.addEventListener("submit", async (e) => {
-
-      e.preventDefault();
-
-
-
-      const name   = document.getElementById("name").value.trim();
-
-      const date   = document.getElementById("date").value;       // "YYYY-MM-DD"
-
-      const boat   = document.getElementById("boat").value;
-
-      const people = Math.max(1, parseInt(document.getElementById("people").value || "1", 10));
-
-
-
-      if (!name) { alert("お名前を入力してください！"); return; }
-
-      if (!boat) { alert("船を選択してください！"); return; }
-
-
-
-      // 送信中の表示＆二重送信防止
-
-      button.disabled = true;
-
-      const oldLabel = button.textContent;
-
-      button.textContent = "送信中…";
-
-
-
-      try {
-
-        const body = new URLSearchParams({ name, date, boat, people }).toString();
-
-        const res  = await fetch(ENDPOINT, {
-
-          method: "POST",
-
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-
-          body
-
-        });
-
-        const json = await res.json(); // { ok: true } を期待
-
-
-
-        // ▼ 満席エラーの詳細表示（GASの確実版に対応）
-
-        if (!json.ok && json.error === 'full') {
-
-          alert(`満席です。\n上限: ${json.limit} 名\n現在: ${json.sum ?? '(不明)'} 名\n申込: ${json.request ?? people} 名\n残り: ${json.remaining} 名\nversion: ${json.version ?? '-'}`);
-
-          return;
-
-        }
-
-        if (!json.ok) throw new Error(json.error || "保存に失敗しました");
-
-
-
-        // 成功表示
-
-        resultDiv.style.display = "block";
-
-        resultDiv.innerHTML = `
-
-          <h3>予約内容（保存しました）</h3>
-
-          <p><strong>お名前:</strong> ${name}</p>
-
-          <p><strong>予約日:</strong> ${date}</p>
-
-          <p><strong>船:</strong> ${boat}</p>
-
-          <p><strong>人数:</strong> ${people}名</p>
-
-          ${typeof json.remaining === 'number' ? `<p>残り枠：${json.remaining}名</p>` : ''}
-
-        `;
-
-        form.reset();
-
-      } catch (err) {
-
-        alert("送信エラー：" + err.message);
-
-      } finally {
-
-        button.disabled = false;
-
-        button.textContent = oldLabel;
-
-      }
-
-    });
-
-  </script>
-
+  <h1>船座席予約</h1>
+
+  <div class="wrap">
+    <!-- 入力フォーム -->
+    <form id="form">
+      <label>お名前
+        <input id="name" type="text" placeholder="山田 太郎" required>
+      </label>
+      <label>予約日
+        <input id="date" type="date" required>
+      </label>
+      <label>船
+        <select id="boat" required>
+          <option value="">選んでください</option>
+          <option value="1号船">1号船</option>
+          <option value="2号船">2号船</option>
+        </select>
+      </label>
+
+      <div class="seat-legend">
+        <span class="badge ok">空き</span>
+        <span class="badge ng">予約済</span>
+        <span class="badge">選択すると縁取り</span>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="secondary" id="reloadBtn">空席を再取得</button>
+        <button type="submit" class="primary" id="submitBtn">選択した席で予約</button>
+      </div>
+
+      <div class="result" id="result"></div>
+      <p class="muted" id="selInfo">選択席: 0</p>
+    </form>
+
+    <!-- 座席図 -->
+    <div class="boat-area">
+      <div class="boat">
+        <div class="hull"></div>
+        <div class="lanes" id="lanes">
+          <!-- JSで席を配置 -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const ENDPOINT = 'https://script.google.com/macros/s/AKfycbzhtCmpId3sONRcrEN5O7zdzXLw-Fgkq-cfZgtTSgqbdpshoTElvxArdWQOowEICAx7/exec';
+
+    // 最短日：今日
+    (() => {
+      const d = new Date();
+      const z = (n)=> String(n).padStart(2,'0');
+      document.getElementById('date').min = `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`;
+    })();
+
+    const lanesEl = document.getElementById('lanes');
+    const form = document.getElementById('form');
+    const reloadBtn = document.getElementById('reloadBtn');
+    const submitBtn = document.getElementById('submitBtn');
+    const resultDiv = document.getElementById('result');
+    const selInfo = document.getElementById('selInfo');
+
+    // 表示上の行レイアウト（画像に近い並びに配置）
+    // 左列: [1,2,3,4,5,6] / 右列: [17,18,19,20,21,22] のような段を作るイメージ
+    // 実Seat数はAPIから来るので、存在しない番号はスキップします。
+    const ROWS = [
+      { cls:'r1', L:[1],  R:[17] },
+      { cls:'r2', L:[2],  R:[18] },
+      { cls:'r3', L:[3],  R:[19] },
+      { cls:'r4', L:[4],  R:[20] },
+      { cls:'r5', L:[5],  R:[21] },
+      { cls:'r6', L:[6],  R:[22] },
+    ];
+
+    let seatsAll = [];      // すべての席番号
+    let reserved = [];      // 予約済み
+    let selected = new Set(); // 画面で選択中
+
+    function seatNode(num, side){
+      const wrap = document.createElement('div');
+      wrap.style.display='flex';
+      wrap.style.alignItems='center';
+      wrap.style.gap='10px';
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.textContent = num;
+
+      const label = document.createElement('div');
+      label.className = 'label';
+
+      const isTaken = reserved.includes(num);
+      if (isTaken){
+        label.classList.add('taken');
+        label.textContent = '予約済';
+      } else {
+        label.classList.add('available');
+        label.textContent = '空き';
+        label.addEventListener('click', () => toggleSelect(num, label));
+      }
+
+      // 左側は [ラベル][丸]、右側は [丸][ラベル] で画像の雰囲気に
+      if (side === 'L'){ wrap.append(label, bubble); }
+      else { wrap.append(bubble, label); }
+
+      return wrap;
+    }
+
+    function toggleSelect(num, labelEl){
+      if (selected.has(num)){
+        selected.delete(num);
+        labelEl.classList.remove('selected');
+      } else {
+        selected.add(num);
+        labelEl.classList.add('selected');
+      }
+      selInfo.textContent = `選択席: ${Array.from(selected).sort((a,b)=>a-b).join(', ') || 0}`;
+    }
+
+    function renderSeats(){
+      lanesEl.innerHTML = '';
+      // 行ごとに絶対配置のrowを作成
+      ROWS.forEach(row=>{
+        const rowEl = document.createElement('div');
+        rowEl.className = `seat-row ${row.cls}`;
+
+        const left = document.createElement('div');
+        const right = document.createElement('div');
+
+        // 指定番号が存在していれば描画
+        row.L.forEach(n=> { if (seatsAll.includes(n)) left.appendChild(seatNode(n,'L')); });
+        row.R.forEach(n=> { if (seatsAll.includes(n)) right.appendChild(seatNode(n,'R')); });
+
+        rowEl.append(left, right);
+        lanesEl.appendChild(rowEl);
+      });
+      selInfo.textContent = '選択席: 0';
+      selected.clear();
+    }
+
+    async function fetchAvailability(){
+      const date = document.getElementById('date').value;
+      const boat = document.getElementById('boat').value;
+      if (!date || !boat) return;
+
+      submitBtn.disabled = true;
+      reloadBtn.disabled = true;
+      try{
+        const url = `${ENDPOINT}?boat=${encodeURIComponent(boat)}&date=${encodeURIComponent(date)}`;
+        const res = await fetch(url, { method:'GET' });
+        const j = await res.json();
+        if (!j.ok) throw new Error(j.error || 'API error');
+
+        seatsAll = j.seatsAll || [];
+        reserved = j.reserved || [];
+        renderSeats();
+      } catch(err){
+        alert('空席取得に失敗：' + err.message);
+      } finally{
+        submitBtn.disabled = false;
+        reloadBtn.disabled = false;
+      }
+    }
+
+    // 日付/船変更で自動取得
+    document.getElementById('date').addEventListener('change', fetchAvailability);
+    document.getElementById('boat').addEventListener('change', fetchAvailability);
+    reloadBtn.addEventListener('click', fetchAvailability);
+
+    form.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+
+      const name = document.getElementById('name').value.trim();
+      const date = document.getElementById('date').value;
+      const boat = document.getElementById('boat').value;
+      const seats = Array.from(selected).sort((a,b)=>a-b);
+
+      if (!name){ alert('お名前を入力してください'); return; }
+      if (!date || !boat){ alert('日付と船を選択してください'); return; }
+      if (!seats.length){ alert('座席を選択してください'); return; }
+
+      submitBtn.disabled = true;
+      const old = submitBtn.textContent;
+      submitBtn.textContent = '送信中…';
+      try{
+        const body = new URLSearchParams({
+          name, date, boat,
+          seats: JSON.stringify(seats)
+        }).toString();
+        const res = await fetch(ENDPOINT, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body });
+        const j = await res.json();
+
+        if (!j.ok && j.error === 'seat_taken'){
+          alert(`選択席が埋まっていました。\n競合: ${j.conflicts.join(', ')}\n空き: ${j.free.join(', ')}`);
+          await fetchAvailability(); // 最新状態に更新
+          return;
+        }
+        if (!j.ok) throw new Error(j.error || '保存に失敗');
+
+        resultDiv.style.display='block';
+        resultDiv.innerHTML = `
+          <strong>予約が完了しました。</strong><br>
+          日付: ${date} / 船: ${boat}<br>
+          席: ${seats.join(', ')}
+        `;
+        selected.clear();
+        await fetchAvailability(); // 反映
+      } catch(err){
+        alert('送信エラー：' + err.message);
+      } finally{
+        submitBtn.disabled = false;
+        submitBtn.textContent = old;
+      }
+    });
+  </script>
 </body>
-
 </html>
