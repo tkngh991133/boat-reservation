@@ -1,115 +1,71 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8" />
-  <title>ボート予約システム</title>
-  <style>
-    body { font-family: Arial, sans-serif; background-color: #f0f8ff; margin: 40px; color: #333; }
-    h1 { color: #0066cc; text-align: center; }
-    form { max-width: 400px; margin: 20px auto; padding: 20px; background: #fff;
-           border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-    label { display: block; margin-top: 15px; font-weight: bold; }
-    input, select { width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ccc; border-radius: 5px; }
-    button { margin-top: 20px; width: 100%; padding: 10px; font-size: 16px; background: #28a745; color: #fff;
-             border: none; border-radius: 5px; cursor: pointer; }
-    button:hover { background: #218838; }
-    #result { max-width: 400px; margin: 20px auto; padding: 15px; background: #e9ffe9; border: 1px solid #28a745;
-              border-radius: 10px; display: none; }
-  </style>
-</head>
-<body>
-  <h1>ボート予約システム</h1>
+<script>
+    // 予約日が「今日以降」しか選べないようにする
+    (function setMinDate() {
+      const d = new Date();
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      document.getElementById("date").setAttribute("min", `${yyyy}-${mm}-${dd}`);
+    })();
 
-  <form id="reservationForm">
-    <label for="name">お名前</label>
-    <input type="text" id="name" name="name" required />
+    // ← あなたの /exec に置き換え済み
+    const ENDPOINT = 'https://script.google.com/macros/s/AKfycbyaYi90p4UUK8tze4R0HhYSROJVwafhS1B2kg9gaSY1cowTgHizbKwBJJtzHjGwJ17r/exec';
 
-    <label for="date">予約日</label>
-    <input type="date" id="date" name="date" required min="" />
+    const form = document.getElementById("reservationForm");
+    const button = form.querySelector("button[type=submit]");
+    const resultDiv = document.getElementById("result");
 
-    <label for="boat">船の選択</label>
-    <select id="boat" name="boat" required>
-      <option value="">選んでください</option>
-      <option value="1号船">1号船</option>
-      <option value="2号船">2号船</option>
-    </select>
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
 
-    <!-- 人数 -->
-    <label for="people">人数</label>
-    <input type="number" id="people" name="people" value="1" min="1" max="20" required />
+      const name   = document.getElementById("name").value.trim();
+      const date   = document.getElementById("date").value;       // "YYYY-MM-DD"
+      const boat   = document.getElementById("boat").value;
+      const people = Math.max(1, parseInt(document.getElementById("people").value || "1", 10));
 
-    <button type="submit">予約する</button>
-  </form>
+      if (!name) { alert("お名前を入力してください！"); return; }
+      if (!boat) { alert("船を選択してください！"); return; }
 
-  <div id="result"></div>
+      // 送信中の表示＆二重送信防止
+      button.disabled = true;
+      const oldLabel = button.textContent;
+      button.textContent = "送信中…";
 
-  <script>
-    // 予約日が「今日以降」しか選べないようにする
-    (function setMinDate() {
-      const d = new Date();
-      const yyyy = d.getFullYear();
-      const mm = String(d.getMonth() + 1).padStart(2, "0");
-      const dd = String(d.getDate()).padStart(2, "0");
-      document.getElementById("date").setAttribute("min", `${yyyy}-${mm}-${dd}`);
-    })();
+      try {
+        const body = new URLSearchParams({ name, date, boat, people }).toString();
+        const res  = await fetch(ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body
+        });
+        const json = await res.json(); 
 
-    // ← あなたの /exec に置き換え済み
-    const ENDPOINT = 'https://script.google.com/macros/s/AKfycbyPFx-z7nqZe7wMXSBfZENxsHxCF0KSR7eJmKrGqWCeYx4XVYj8hacuc-241cqOQC9I/exec';
+        // ▼ ここを修正
+        if (!json.ok) {
+          if (json.error === 'full') {
+            alert(`満席です。\n上限: ${json.limit} 名\n現在: ${json.sum ?? '(不明)'} 名\n申込: ${json.request ?? people} 名\n残り: ${json.remaining} 名\nversion: ${json.version ?? '-'}`);
+          } else {
+            alert("保存に失敗しました：" + (json.error || '不明なエラー'));
+          }
+          return;
+        }
 
-    const form = document.getElementById("reservationForm");
-    const button = form.querySelector("button[type=submit]");
-    const resultDiv = document.getElementById("result");
-
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-
-      const name   = document.getElementById("name").value.trim();
-      const date   = document.getElementById("date").value;       // "YYYY-MM-DD"
-      const boat   = document.getElementById("boat").value;
-      const people = Math.max(1, parseInt(document.getElementById("people").value || "1", 10));
-
-      if (!name) { alert("お名前を入力してください！"); return; }
-      if (!boat) { alert("船を選択してください！"); return; }
-
-      // 送信中の表示＆二重送信防止
-      button.disabled = true;
-      const oldLabel = button.textContent;
-      button.textContent = "送信中…";
-
-      try {
-        const body = new URLSearchParams({ name, date, boat, people }).toString();
-        const res  = await fetch(ENDPOINT, {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body
-        });
-        const json = await res.json(); // { ok: true } を期待
-
-        // ▼ 満席エラーの詳細表示（GASの確実版に対応）
-        if (!json.ok && json.error === 'full') {
-          alert(`満席です。\n上限: ${json.limit} 名\n現在: ${json.sum ?? '(不明)'} 名\n申込: ${json.request ?? people} 名\n残り: ${json.remaining} 名\nversion: ${json.version ?? '-'}`);
-          return;
-        }
-        if (!json.ok) throw new Error(json.error || "保存に失敗しました");
-
-        // 成功表示
-        resultDiv.style.display = "block";
-        resultDiv.innerHTML = `
-          <h3>予約内容（保存しました）</h3>
-          <p><strong>お名前:</strong> ${name}</p>
-          <p><strong>予約日:</strong> ${date}</p>
-          <p><strong>船:</strong> ${boat}</p>
-          <p><strong>人数:</strong> ${people}名</p>
-          ${typeof json.remaining === 'number' ? `<p>残り枠：${json.remaining}名</p>` : ''}
-        `;
-        form.reset();
-      } catch (err) {
-        alert("送信エラー：" + err.message);
-      } finally {
-        button.disabled = false;
-        button.textContent = oldLabel;
-      }
-    });
-  </script>
-</body>
-</html>
+        // 成功表示
+        resultDiv.style.display = "block";
+        resultDiv.innerHTML = `
+          <h3>予約内容（保存しました）</h3>
+          <p><strong>お名前:</strong> ${name}</p>
+          <p><strong>予約日:</strong> ${date}</p>
+          <p><strong>船:</strong> ${boat}</p>
+          <p><strong>人数:</strong> ${people}名</p>
+          ${typeof json.remaining === 'number' ? `<p>残り枠：${json.remaining}名</p>` : ''}
+        `;
+        form.reset();
+      } catch (err) {
+        alert("送信エラー：" + err.message);
+      } finally {
+        button.disabled = false;
+        button.textContent = oldLabel;
+      }
+    });
+  </script>
